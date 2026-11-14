@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Code Quality and Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: modular_backend_test
+          POSTGRES_USER: modular_backend
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U modular_backend -d modular_backend_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_pgsql, pgsql, pdo_sqlite, sqlite3
+          coverage: none
+
+      - name: Validate Composer configuration
+        run: composer validate
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Check formatting
+        run: composer format:test
+
+      - name: Run static analysis
+        run: composer analyse
+
+      - name: Run unit, feature and architecture tests
+        run: composer test
+
+      - name: Run PostgreSQL integration tests
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: modular_backend_test
+          DB_USERNAME: modular_backend
+          DB_PASSWORD: test_password
+        run: composer test:integration
