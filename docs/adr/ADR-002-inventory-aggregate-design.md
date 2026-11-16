@@ -1,6 +1,6 @@
 # ADR-002: Inventory Aggregate Design
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-16
 - **Decision Makers:** Project maintainers
 - **Related Decisions:** ADR-001
