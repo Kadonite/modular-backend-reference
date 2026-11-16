@@ -55,7 +55,9 @@ jobs:
         run: composer analyse
 
       - name: Run unit, feature and architecture tests
-        run: composer test
+        run: |
+          php artisan config:clear --ansi
+          php artisan test --display-warnings --display-errors
 
       - name: Run PostgreSQL integration tests
         env:
@@ -65,4 +67,4 @@ jobs:
           DB_DATABASE: modular_backend_test
           DB_USERNAME: modular_backend
           DB_PASSWORD: test_password
-        run: composer test:integration
+        run: php vendor/bin/pest --configuration=phpunit.integration.xml --display-warnings --display-errors
