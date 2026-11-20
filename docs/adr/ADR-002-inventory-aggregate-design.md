@@ -11,8 +11,7 @@ The Inventory module requires a domain model capable of managing item storage wh
 
 The model must support:
 
-- Fixed slot-based capacity.
-- Expandable capacity.
+- Slot-based capacity with explicit expansion.
 - Stackable and unique items.
 - Automatic and explicit item placement.
 - Splitting, merging and swapping.
@@ -52,11 +51,25 @@ Capacity reduction is not supported in the initial implementation.
 
 ### Mutation semantics
 
-All additions and removals are atomic.
+All inventory mutations preserve aggregate consistency.
 
 An operation that cannot complete must leave the aggregate unchanged.
 
-Expected business failures are represented explicitly rather than relying on exceptions.
+Successful mutations increment the aggregate version exactly once.
+
+Expected business failures from Result-returning operations are represented explicitly rather than relying on exceptions.
+
+Invalid constructor arguments and invalid method arguments are rejected through exceptions.
+
+### Domain events
+
+The aggregate records one domain event for each successful business mutation.
+
+Failed operations must not record domain events.
+
+Events describe the business operation and contain relevant identifiers, quantities and slot indexes rather than exposing aggregate internals.
+
+Pending domain events can be retrieved and cleared by the application layer.
 
 ### Aggregate boundary
 
@@ -91,7 +104,7 @@ Application-layer contracts and Infrastructure implementations follow ADR-001.
 
 - Multi-inventory operations require application-level coordination.
 - The aggregate must be loaded and validated before mutation.
-- Aggregate versioning is needed to prevent concurrent lost updates.
+- The aggregate version must be used by persistence infrastructure to prevent concurrent lost updates.
 
 ## Alternatives considered
 
@@ -109,13 +122,47 @@ Rejected because it would create unnecessarily large aggregate boundaries and co
 
 ## Validation
 
-The decision will be validated through:
+The decision is validated through:
 
 - Unit tests for inventory invariants.
 - Unit tests for every supported mutation.
 - Tests proving failed operations leave state unchanged.
+- Tests verifying domain event recording.
 - Architecture tests preventing Domain dependencies on Laravel and Infrastructure.
-- Integration tests when persistence is introduced.
+- Integration tests verifying persistence and database integrity.
+- Static analysis and code formatting checks.
+
+### Completed validation
+
+The Inventory domain and persistence implementation have been validated through:
+
+- Unit tests covering aggregate construction and supported mutations.
+- Tests verifying successful and failed mutation behaviour.
+- Tests verifying domain event recording.
+- Mapper tests covering aggregate reconstitution and mixed slot contents.
+- Mapper integrity tests rejecting malformed persistence records.
+- Repository integration tests covering persistence, optimistic concurrency and transaction rollback.
+- PostgreSQL schema tests verifying database integrity constraints.
+- Architecture tests enforcing domain independence.
+- PHPStan static analysis with no reported errors.
+- Laravel Pint formatting checks.
+
+Latest validation results:
+
+| Validation | Result |
+|---|---|
+| Full test suite | 203 tests passed, 593 assertions |
+| PostgreSQL integration suite | 12 tests passed, 48 assertions |
+| PHPStan | 32/32 files, no errors |
+| Pint formatting | Passed |
+
+The persistence implementation uses an Application-layer repository contract and an Infrastructure-layer Eloquent implementation, consistent with ADR-001.
+
+Optimistic concurrency is enforced through conditional version updates. Inventory metadata and slot replacement are persisted atomically within a database transaction.
+
+PostgreSQL constraints enforce positive inventory capacity, non-negative versions and slot indexes, and valid mutually exclusive slot contents.
+
+The mapper validates persisted slot representations before reconstituting the domain aggregate.
 
 ## Implementation notes
 
