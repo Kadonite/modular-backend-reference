@@ -129,22 +129,40 @@ The decision is validated through:
 - Tests proving failed operations leave state unchanged.
 - Tests verifying domain event recording.
 - Architecture tests preventing Domain dependencies on Laravel and Infrastructure.
-- Integration tests when persistence is introduced.
+- Integration tests verifying persistence and database integrity.
+- Static analysis and code formatting checks.
 
 ### Completed validation
 
-The initial domain implementation has been validated through:
+The Inventory domain and persistence implementation have been validated through:
 
 - Unit tests covering aggregate construction and supported mutations.
 - Tests verifying successful and failed mutation behaviour.
 - Tests verifying domain event recording.
-- PHPStan static analysis.
-- Laravel Pint formatting.
+- Mapper tests covering aggregate reconstitution and mixed slot contents.
+- Mapper integrity tests rejecting malformed persistence records.
+- Repository integration tests covering persistence, optimistic concurrency and transaction rollback.
+- PostgreSQL schema tests verifying database integrity constraints.
 - Architecture tests enforcing domain independence.
+- PHPStan static analysis with no reported errors.
+- Laravel Pint formatting checks.
 
-The full test suite currently passes with 186 tests and 559 assertions. PHPStan reports no errors.
+Latest validation results:
 
-Integration tests for persistence remain outstanding and will be completed when the persistence implementation is introduced.
+| Validation | Result |
+|---|---|
+| Full test suite | 203 tests passed, 593 assertions |
+| PostgreSQL integration suite | 12 tests passed, 48 assertions |
+| PHPStan | 32/32 files, no errors |
+| Pint formatting | Passed |
+
+The persistence implementation uses an Application-layer repository contract and an Infrastructure-layer Eloquent implementation, consistent with ADR-001.
+
+Optimistic concurrency is enforced through conditional version updates. Inventory metadata and slot replacement are persisted atomically within a database transaction.
+
+PostgreSQL constraints enforce positive inventory capacity, non-negative versions and slot indexes, and valid mutually exclusive slot contents.
+
+The mapper validates persisted slot representations before reconstituting the domain aggregate.
 
 ## Implementation notes
 
